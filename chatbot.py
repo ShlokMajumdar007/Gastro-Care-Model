@@ -4,7 +4,9 @@ import pandas as pd
 from symptom_extractor import update_symptoms
 from responses import generate_response
 
-# Safety checks
+# ==============================
+# ✅ Load Models Safely
+# ==============================
 required_files = [
     "model/condition_model.pkl",
     "model/severity_model.pkl",
@@ -15,58 +17,107 @@ for f in required_files:
     if not os.path.exists(f):
         raise RuntimeError(f"❌ Missing file: {f}. Run train_model.py first.")
 
-# Load models and feature schema
 condition_model = joblib.load("model/condition_model.pkl")
 severity_model = joblib.load("model/severity_model.pkl")
 feature_columns = joblib.load("model/feature_columns.pkl")
 
-print("\n🩺 Gastroenterology First-Aid Chatbot")
-print("Describe your symptoms freely.")
-print("Type 'reset' to clear symptoms or 'exit' to quit.\n")
+# ==============================
+# 🔁 Severity Mapping
+# ==============================
+def severity_label(score):
+    if score < 30:
+        return "MILD"
+    elif score < 70:
+        return "MODERATE"
+    else:
+        return "SEVERE"
 
-# Persistent symptom memory
-symptoms = {
-    "abdominal_pain": 0,
-    "bloating": 0,
-    "diarrhea": 0,
-    "constipation": 0,
-    "acid_reflux": 0,
-    "nausea": 0,
-    "vomiting": 0,
-    "weight_loss": 0,
-    "blood_in_stool": 0,
-    "fever": 0,
-    "pain_duration_days": 3
-}
+# ==============================
+# 🧠 Initial Symptom State
+# ==============================
+def reset_symptoms():
+    return {
+        "abdominal_pain": 0,
+        "bloating": 0,
+        "diarrhea": 0,
+        "constipation": 0,
+        "acid_reflux": 0,
+        "nausea": 0,
+        "vomiting": 0,
+        "weight_loss": 0,
+        "blood_in_stool": 0,
+        "fever": 0,
+        "pain_duration_days": 3
+    }
 
+symptoms = reset_symptoms()
+
+print("\n🩺 Gastro AI Chatbot (Hybrid ML)")
+print("Describe your symptoms naturally.")
+print("Commands: reset | status | exit\n")
+
+# ==============================
+# 🔁 Chat Loop
+# ==============================
 while True:
     user_input = input("You: ").strip()
 
     if user_input.lower() == "exit":
-        print("Chatbot: Take care and consult a doctor if symptoms persist 👋")
+        print("Chatbot: Take care! 👋")
         break
 
     if user_input.lower() == "reset":
-        for k in symptoms:
-            symptoms[k] = 0 if k != "pain_duration_days" else 3
-        print("Chatbot: Symptom history cleared.\n")
+        symptoms = reset_symptoms()
+        print("Chatbot: 🔄 Symptoms reset.\n")
         continue
 
-    # Update symptom memory
+    if user_input.lower() == "status":
+        print("\n📊 Current Symptoms:")
+        for k, v in symptoms.items():
+            print(f"{k}: {v}")
+        print()
+        continue
+
+    # ==============================
+    # 🧠 Update Symptoms (NLP)
+    # ==============================
     symptoms = update_symptoms(symptoms, user_input)
 
-    # Build input DataFrame
-    X_input = pd.DataFrame([symptoms])
+    # ==============================
+    # 📊 Convert to DataFrame
+    # ==============================
+    df = pd.DataFrame([symptoms])
+    df = pd.get_dummies(df)
+    df = df.reindex(columns=feature_columns, fill_value=0)
 
-    # Apply same encoding as training
-    X_input = pd.get_dummies(X_input)
+    # ==============================
+    # 🤖 Predictions
+    # ==============================
+    condition = condition_model.predict(df)[0]
+    severity_score = severity_model.predict(df)[0]
+    severity = severity_label(severity_score)
 
-    # 🔥 ALIGN FEATURES EXACTLY
-    X_input = X_input.reindex(columns=feature_columns, fill_value=0)
+    # ==============================
+    # 💬 Response Generation
+    # ==============================
+    response = generate_response(condition, severity, symptoms)
 
-    # Predict
-    condition = condition_model.predict(X_input)[0]
-    severity = severity_model.predict(X_input)[0]
-
+    # ==============================
+    # 🧾 Output
+    # ==============================
     print("\nChatbot:")
-    print(generate_response(condition, severity))
+    print(response)
+
+    print(f"\n📈 Severity Score: {round(float(severity_score),2)} ({severity})")
+
+    # ==============================
+    # 🧠 Smart follow-up (NEW 🔥)
+    # ==============================
+    if severity == "SEVERE":
+        print("⚠ I strongly recommend seeking medical help immediately.\n")
+
+    elif severity == "MODERATE":
+        print("👉 Monitor symptoms closely. Want diet tips? (yes/no)\n")
+
+    elif severity == "MILD":
+        print("👉 This looks manageable. Stay hydrated 👍\n")

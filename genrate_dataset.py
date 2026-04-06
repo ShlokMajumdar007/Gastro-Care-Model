@@ -16,18 +16,25 @@ def generate_sample():
         "pain_duration_days": random.randint(1, 60)
     }
 
+    # Condition logic
     if symptoms["blood_in_stool"] or symptoms["weight_loss"]:
-        condition, severity = "IBD_LIKE", "SEVERE"
+        condition = "IBD_LIKE"
+        severity = "SEVERE"
     elif symptoms["acid_reflux"]:
-        condition, severity = "GERD_LIKE", "MILD"
+        condition = "GERD_LIKE"
+        severity = "MILD"
     elif symptoms["diarrhea"] and symptoms["bloating"]:
-        condition, severity = "IBS_LIKE", "MODERATE"
+        condition = "IBS_LIKE"
+        severity = "MODERATE"
     elif symptoms["vomiting"] and symptoms["abdominal_pain"]:
-        condition, severity = "PEPTIC_ULCER_LIKE", "MODERATE"
+        condition = "PEPTIC_ULCER_LIKE"
+        severity = "MODERATE"
     else:
-        condition, severity = "LOW_RISK", "MILD"
+        condition = "LOW_RISK"
+        severity = "MILD"
 
     return list(symptoms.values()) + [condition, severity]
+
 
 columns = [
     "abdominal_pain","bloating","diarrhea","constipation","acid_reflux",
@@ -37,6 +44,7 @@ columns = [
 
 data = [generate_sample() for _ in range(1200)]
 df = pd.DataFrame(data, columns=columns)
-df.to_csv("data/gastro_dataset.csv", index=False)
+
+df.to_csv("data/data-train.csv", index=False)
 
 print("✅ Dataset generated")

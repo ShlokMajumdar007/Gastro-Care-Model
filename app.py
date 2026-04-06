@@ -1,28 +1,129 @@
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, Query
+from pydantic import BaseModel
 import joblib
-import numpy as np
-from first_aid_logic import first_aid_response
+import pandas as pd
+import os
 
-app = Flask(__name__)
+app = FastAPI(title="Hybrid Gastro Medical API")
 
-condition_model = joblib.load("condition_model.pkl")
-severity_model = joblib.load("severity_model.pkl")
+# ==============================
+# ✅ Load Models Safely
+# ==============================
+required_files = [
+    "model/condition_model.pkl",
+    "model/severity_model.pkl",
+    "model/feature_columns.pkl"
+]
 
-@app.route("/predict", methods=["POST"])
-def predict():
-    data = request.json
-    features = np.array([list(data.values())])
+for f in required_files:
+    if not os.path.exists(f):
+        raise RuntimeError(f"❌ Missing file: {f}. Run train_model.py first.")
 
-    condition = condition_model.predict(features)[0]
-    severity = severity_model.predict(features)[0]
-    advice = first_aid_response(condition, severity)
+condition_model = joblib.load("model/condition_model.pkl")
+severity_model = joblib.load("model/severity_model.pkl")
+feature_columns = joblib.load("model/feature_columns.pkl")
 
-    return jsonify({
-        "probable_condition": condition,
-        "severity": severity,
-        "first_aid_guidance": advice,
-        "note": "This is not a medical diagnosis."
-    })
+# ==============================
+# 🧠 Input Schema
+# ==============================
+class InputData(BaseModel):
+    abdominal_pain: int
+    bloating: int
+    diarrhea: int
+    constipation: int
+    acid_reflux: int
+    nausea: int
+    vomiting: int
+    weight_loss: int
+    blood_in_stool: int
+    fever: int
+    pain_duration_days: int
 
-if __name__ == "__main__":
-    app.run(debug=True)
+# ==============================
+# 🔁 Severity Mapping
+# ==============================
+def severity_label(score):
+    if score < 30:
+        return "MILD"
+    elif score < 70:
+        return "MODERATE"
+    else:
+        return "SEVERE"
+
+# ==============================
+# 🏠 Home Route
+# ==============================
+@app.get("/")
+def home():
+    return {
+        "message": "✅ Hybrid Medical API Running",
+        "docs": "/docs"
+    }
+
+# ==============================
+# 🤖 Prediction Logic
+# ==============================
+def run_prediction(data_dict):
+    df = pd.DataFrame([data_dict])
+    df = pd.get_dummies(df)
+
+    # Align with training schema
+    df = df.reindex(columns=feature_columns, fill_value=0)
+
+    condition = condition_model.predict(df)[0]
+    severity_score = severity_model.predict(df)[0]
+    severity = severity_label(severity_score)
+
+    return condition, severity_score, severity
+
+# ==============================
+# 📩 POST Endpoint
+# ==============================
+@app.post("/predict")
+def predict_post(data: InputData):
+    condition, severity_score, severity = run_prediction(data.dict())
+
+    return {
+        "condition": condition,
+        "severity_score": round(float(severity_score), 2),
+        "severity": severity
+    }
+
+# ==============================
+# 🌐 GET Endpoint
+# ==============================
+@app.get("/predict")
+def predict_get(
+    abdominal_pain: int = Query(...),
+    bloating: int = Query(...),
+    diarrhea: int = Query(...),
+    constipation: int = Query(...),
+    acid_reflux: int = Query(...),
+    nausea: int = Query(...),
+    vomiting: int = Query(...),
+    weight_loss: int = Query(...),
+    blood_in_stool: int = Query(...),
+    fever: int = Query(...),
+    pain_duration_days: int = Query(...)
+):
+    data_dict = {
+        "abdominal_pain": abdominal_pain,
+        "bloating": bloating,
+        "diarrhea": diarrhea,
+        "constipation": constipation,
+        "acid_reflux": acid_reflux,
+        "nausea": nausea,
+        "vomiting": vomiting,
+        "weight_loss": weight_loss,
+        "blood_in_stool": blood_in_stool,
+        "fever": fever,
+        "pain_duration_days": pain_duration_days
+    }
+
+    condition, severity_score, severity = run_prediction(data_dict)
+
+    return {
+        "condition": condition,
+        "severity_score": round(float(severity_score), 2),
+        "severity": severity
+    }

@@ -1,82 +1,76 @@
-def generate_response(condition, severity):
-    # FULL disease names (what you asked for)
+def generate_response(condition, severity, symptoms):
+
+    response = []
+
+    # ⚠ Disclaimer
+    response.append("⚠ This is a first-level medical assessment, not a confirmed diagnosis.")
+
+    # 🧠 Smart condition correction (medical logic override)
+    if symptoms["blood_in_stool"] == 1 or symptoms["weight_loss"] == 1:
+        condition = "IBD_LIKE"
+        severity = "SEVERE"
+
+    elif symptoms["acid_reflux"] == 1:
+        condition = "GERD_LIKE"
+
+    elif symptoms["diarrhea"] == 1 and symptoms["bloating"] == 1:
+        condition = "IBS_LIKE"
+
+    elif symptoms["vomiting"] == 1 and symptoms["abdominal_pain"] == 1:
+        condition = "PEPTIC_ULCER_LIKE"
+
+    elif sum(symptoms.values()) <= 2:
+        condition = "LOW_RISK"
+
+    # 🩺 Condition names
     disease_full_names = {
         "GERD_LIKE": "Gastroesophageal Reflux Disease (GERD)",
         "IBS_LIKE": "Irritable Bowel Syndrome (IBS)",
         "IBD_LIKE": "Inflammatory Bowel Disease (IBD)",
         "PEPTIC_ULCER_LIKE": "Peptic Ulcer Disease",
-        "LOW_RISK": "No specific gastrointestinal disease identified"
+        "LOW_RISK": "General Gastrointestinal Discomfort"
     }
 
-    response = []
+    disease_name = disease_full_names.get(condition, "Gastrointestinal condition")
 
-    # Safety disclaimer
-    response.append(
-        "⚠ This is a first-level medical assessment, not a confirmed diagnosis."
-    )
+    response.append(f"🩺 Probable condition identified: {disease_name}.")
 
-    # FULL disease name output
-    disease_name = disease_full_names.get(
-        condition, "Gastrointestinal condition"
-    )
-    response.append(
-        f"🩺 Probable condition identified: {disease_name}."
-    )
+    # 🎯 Severity logic improvement
+    if symptoms["blood_in_stool"] or symptoms["weight_loss"]:
+        severity = "SEVERE"
+    elif symptoms["vomiting"] and symptoms["diarrhea"]:
+        severity = "MODERATE"
 
-    # Severity explanation
+    # 🎯 Severity response
     if severity == "SEVERE":
-        response.append(
-            "The symptoms suggest a potentially serious condition."
-        )
-        response.append(
-            "Immediate medical consultation is strongly recommended."
-        )
+        response.append("🔴 Symptoms indicate a potentially serious condition.")
+        response.append("🚨 Seek immediate medical attention.")
+
     elif severity == "MODERATE":
-        response.append(
-            "The symptoms indicate a moderate condition."
-        )
-        response.append(
-            "Consulting a gastroenterologist soon is advised."
-        )
+        response.append("🟡 Symptoms are moderate.")
+        response.append("⚠ Monitor closely and consult a doctor if needed.")
+
     else:
-        response.append(
-            "The symptoms appear mild at this stage."
-        )
-        response.append(
-            "Lifestyle and dietary changes may help."
-        )
+        response.append("🟢 Symptoms appear mild.")
+        response.append("✔ Lifestyle and dietary changes may help.")
 
-    # First-aid style guidance
-    advice = {
-        "GERD_LIKE": [
-            "Avoid spicy, oily, and acidic foods",
-            "Eat smaller and frequent meals",
-            "Do not lie down immediately after eating"
-        ],
-        "IBS_LIKE": [
-            "Manage stress levels",
-            "Avoid trigger foods",
-            "Maintain a regular diet"
-        ],
-        "IBD_LIKE": [
-            "Monitor symptoms closely",
-            "Do not delay professional medical care"
-        ],
-        "PEPTIC_ULCER_LIKE": [
-            "Avoid alcohol and smoking",
-            "Avoid painkillers unless prescribed"
-        ],
-        "LOW_RISK": [
-            "Maintain a balanced diet",
-            "Stay hydrated"
-        ]
-    }
+    # 💡 Intelligent advice
+    if symptoms["diarrhea"] and symptoms["vomiting"]:
+        response.append("💧 Risk of dehydration — increase fluid intake.")
 
-    for tip in advice.get(condition, []):
-        response.append(f"• {tip}")
+    if symptoms["acid_reflux"]:
+        response.append("🔥 Avoid spicy, oily, and acidic foods.")
 
-    response.append(
-        "If symptoms persist or worsen, please consult a qualified healthcare professional."
-    )
+    if symptoms["constipation"]:
+        response.append("🥗 Increase fiber intake and hydration.")
+
+    if symptoms["bloating"]:
+        response.append("🌿 Avoid gas-producing foods.")
+
+    if symptoms["fever"]:
+        response.append("🌡 Monitor temperature regularly.")
+
+    # 🏁 Final note
+    response.append("👨‍⚕ If symptoms persist or worsen, consult a healthcare professional.")
 
     return "\n".join(response)

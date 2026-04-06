@@ -1,70 +1,64 @@
-# symptom_extractor.py
-# Refined symptom extraction with better NLP coverage
-# Offline, rule-based, explainable
-
 import re
 
 def update_symptoms(existing, text):
     text = text.lower()
 
-    # Normalize common phrases
+    # Normalize text
     text = text.replace("-", " ")
     text = re.sub(r"\s+", " ", text)
 
-    # Expanded symptom keyword mapping
+    # ============================
+    # 🧠 Symptom keyword mapping
+    # ============================
     symptom_keywords = {
         "abdominal_pain": [
             "abdominal pain", "stomach pain", "belly pain",
-            "pain in abdomen", "pain in stomach", "upper stomach pain",
-            "lower abdominal pain"
+            "pain in abdomen", "pain in stomach", "cramps"
         ],
         "bloating": [
-            "bloating", "gas", "gassy", "fullness",
-            "bloated", "feeling full"
+            "bloating", "bloated", "gas", "gassy", "fullness"
         ],
         "diarrhea": [
             "diarrhea", "loose motion", "loose stool",
             "watery stool", "frequent stools"
         ],
         "constipation": [
-            "constipation", "hard stool", "difficulty passing stool",
-            "not able to pass stool"
+            "constipation", "hard stool", "difficulty passing stool"
         ],
         "acid_reflux": [
-            "acid reflux", "heartburn", "acidic",
-            "burning chest", "burning sensation",
-            "sour taste", "acid coming up"
+            "acid reflux", "heartburn", "burning chest",
+            "acidic", "sour taste"
         ],
         "nausea": [
-            "nausea", "feeling sick", "queasy"
+            "nausea", "queasy", "feeling sick"
         ],
         "vomiting": [
-            "vomiting", "throw up", "vomited", "puking"
+            "vomiting", "vomit", "threw up", "puking"
         ],
         "weight_loss": [
-            "weight loss", "lost weight", "losing weight",
-            "unintentional weight loss"
+            "weight loss", "losing weight", "lost weight"
         ],
         "blood_in_stool": [
-            "blood in stool", "bloody stool", "blood while passing stool",
-            "blood in poop", "red stool", "black stool"
+            "blood in stool", "bloody stool", "blood in poop",
+            "red stool", "black stool"
         ],
         "fever": [
-            "fever", "high temperature", "temperature",
-            "feeling feverish"
+            "fever", "high temperature", "feverish"
         ]
     }
 
-    # Detect symptoms (once true, stays true)
+    # ============================
+    # ✅ Detect symptoms
+    # ============================
     for symptom, keywords in symptom_keywords.items():
         for keyword in keywords:
             if keyword in text:
                 existing[symptom] = 1
                 break
 
-    # -------- Duration extraction (robust) --------
-    # Examples:
-    # "for 5 days", "since 2 weeks", "last 10 days"
+    # ============================
+    # ⏱ Duration extraction
+    # ============================
     day_match = re.search(r"(\d+)\s*day", text)
     week_match = re.search(r"(\d+)\s*week", text)
     month_match = re.search(r"(\d+)\s*month", text)
@@ -75,5 +69,14 @@ def update_symptoms(existing, text):
         existing["pain_duration_days"] = int(week_match.group(1)) * 7
     elif month_match:
         existing["pain_duration_days"] = int(month_match.group(1)) * 30
+
+    # ============================
+    # 🔥 Intensity detection (NEW)
+    # ============================
+    if any(word in text for word in ["severe", "very bad", "extreme"]):
+        existing["pain_duration_days"] += 5
+
+    if any(word in text for word in ["mild", "slight"]):
+        existing["pain_duration_days"] = max(1, existing["pain_duration_days"] - 2)
 
     return existing
